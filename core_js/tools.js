@@ -73,12 +73,41 @@ function reload() {
  */
 async function checkOSAndroid() {
     if (os === undefined || os === null || os === "") {
-        await chrome.runtime.getPlatformInfo(function (info) {
+        try {
+            const info = await browser.runtime.getPlatformInfo();
             os = info.os;
-        });
+        } catch (e) {
+            os = "";
+        }
     }
 
     return os === "android";
+}
+
+/**
+ * Returns true if this script runs in a (Manifest V3) background service worker
+ * instead of a persistent background page.
+ * @return {boolean}
+ */
+function isServiceWorker() {
+    return typeof window === 'undefined';
+}
+
+/**
+ * Returns true if requests are filtered with declarativeNetRequest rules
+ * (Manifest V3) instead of a blocking webRequest listener.
+ * @return {boolean}
+ */
+function usesDNR() {
+    return typeof browser !== 'undefined' && !!browser.declarativeNetRequest
+        && browser.runtime.getManifest().manifest_version >= 3;
+}
+
+/**
+ * Returns the toolbar button API (`action` in Manifest V3, `browserAction` in Manifest V2).
+ */
+function getAction() {
+    return browser.action || browser.browserAction;
 }
 
 /**
@@ -181,9 +210,9 @@ function changeIcon() {
     checkOSAndroid().then((res) => {
         if (!res) {
             if (storage.globalStatus) {
-                browser.browserAction.setIcon({path: "img/clearurls_128x128.png"}).catch(handleError);
+                getAction().setIcon({path: "img/clearurls_128x128.png"}).catch(handleError);
             } else {
-                browser.browserAction.setIcon({path: "img/clearurls_gray_128x128.png"}).catch(handleError);
+                getAction().setIcon({path: "img/clearurls_gray_128x128.png"}).catch(handleError);
             }
         }
     });
@@ -200,13 +229,13 @@ function setBadgedStatus() {
             let color = storage.badged_color;
             if (storage.badged_color.charAt(0) !== '#')
                 color = '#' + storage.badged_color;
-            browser.browserAction.setBadgeBackgroundColor({
+            getAction().setBadgeBackgroundColor({
                 'color': color
             }).catch(handleError);
 
-            // Works only in Firefox: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/browserAction/setBadgeTextColor#Browser_compatibility
-            if (getBrowser() === "Firefox") {
-                browser.browserAction.setBadgeTextColor({
+            // Firefox and Chrome >= 110: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/browserAction/setBadgeTextColor#Browser_compatibility
+            if (typeof getAction().setBadgeTextColor === 'function') {
+                getAction().setBadgeTextColor({
                     color: "#FFFFFF"
                 }).catch(handleError);
             }
@@ -226,6 +255,11 @@ function getCurrentURL() {
  * Check for browser.
  */
 function getBrowser() {
+    if (typeof browser !== 'undefined' && browser.runtime && typeof browser.runtime.getURL === 'function'
+        && browser.runtime.getURL('').startsWith('moz-extension://')) {
+        return "Firefox";
+    }
+
     if (typeof InstallTrigger !== 'undefined') {
         return "Firefox";
     } else {

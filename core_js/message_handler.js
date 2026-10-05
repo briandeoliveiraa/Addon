@@ -29,14 +29,24 @@
  */
 function handleMessage(request, sender, sendResponse)
 {
-    let fn = window[request.function];
+    // `globalThis` instead of `window`, so this also works in a service worker
+    let fn = globalThis[request.function];
 
-    if(typeof fn === "function")
+    if(typeof fn !== "function")
     {
-        let response = fn.apply(null, request.params);
-
-        return Promise.resolve({response});
+        return false;
     }
+
+    // Wait until the storage has been loaded (a service worker may have just been started)
+    storageReady
+        .then(() => fn.apply(null, request.params))
+        .then(response => sendResponse({response}), error => {
+            handleError(error);
+            sendResponse({response: undefined});
+        });
+
+    // Keep the message channel open for the asynchronous response
+    return true;
 }
 
 browser.runtime.onMessage.addListener(handleMessage);

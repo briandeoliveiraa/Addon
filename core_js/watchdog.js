@@ -25,10 +25,11 @@
 * This watchdog restarts the whole Add-on, when the check fails.
 */
 const CHECK_INTERVAL = 60000;
+const WATCHDOG_ALARM = "clearurls-watchdog";
 const __dirtyURL = "https://clearurls.roebert.eu?utm_source=addon";
 const __cleanURL = new URL("https://clearurls.roebert.eu").toString();
 
-setInterval(function() {
+function watchdogCheck() {
     if(isStorageAvailable() && storage.globalStatus) {
         if(new URL(pureCleaning(__dirtyURL, true)).toString() !== __cleanURL) {
             storage.watchDogErrorCount += 1;
@@ -40,4 +41,21 @@ setInterval(function() {
             saveOnExit();
         }
     }
-}, CHECK_INTERVAL);
+}
+
+if (isServiceWorker() && browser.alarms) {
+    // Timers do not survive the termination of a service worker, alarms do.
+    browser.alarms.get(WATCHDOG_ALARM).then(alarm => {
+        if (!alarm) {
+            return browser.alarms.create(WATCHDOG_ALARM, {periodInMinutes: CHECK_INTERVAL / 60000});
+        }
+    }).catch(handleError);
+
+    browser.alarms.onAlarm.addListener(alarm => {
+        if (alarm.name === WATCHDOG_ALARM) {
+            storageReady.then(watchdogCheck).catch(handleError);
+        }
+    });
+} else {
+    setInterval(watchdogCheck, CHECK_INTERVAL);
+}

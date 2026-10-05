@@ -42,6 +42,8 @@
 
         let s = document.getElementsByTagName('script')[0];
         if (s !== undefined) {
+            // Reuse the page's CSP nonce, otherwise a strict CSP refuses the inline script
+            if (s.nonce) ele.nonce = s.nonce;
             s.parentNode.insertBefore(ele, s);
         }
     }

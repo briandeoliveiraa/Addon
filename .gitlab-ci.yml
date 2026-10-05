@@ -32,16 +32,14 @@ bundle addon:
     paths:
       - ClearURLs.zip
 
-#bundle addon chrome:
-  #stage: build
-  #script:
-    #- jq 'del(.applications)' manifest.json > manifest.json.tmp && mv manifest.json.tmp manifest.json
-    #- zip ClearURLs-chrome -r -FS clearurls.js browser-polyfill.js manifest.json img/* external_js/* html/* core_js/* css/* fonts/* _locales/*
-  #only:
-  #  - master
-  #artifacts:
-  #  paths:
-  #    - ClearURLs-chrome.zip
+bundle addon chrome:
+  stage: build
+  script:
+    - node build_tools/build-chrome.js --zip
+    - mv build/ClearURLs-chrome.zip ClearURLs-chrome.zip
+  artifacts:
+    paths:
+      - ClearURLs-chrome.zip
 
 pages:
   stage: deploy

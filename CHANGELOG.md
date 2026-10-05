@@ -15,6 +15,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Require Firefox >= 55
 - Require Chrome >= 37
 
+## [Unreleased]
+
+### Added
+- Chrome version based on Manifest V3 (`manifest.chrome.json`, `core_js/background.js`, `core_js/dnr.js`, `build_tools/build-chrome.js`).
+  The ClearURLs rules are translated into `declarativeNetRequest` rules, the JavaScript engine keeps providing statistics, log,
+  badge, context menu, cleaning tool, history listener, redirections and a fallback for main frames.
+  See the README section "Chrome (Manifest V3)" for the known differences.
+
+### Changed
+- The background scripts work in a service worker as well as in a persistent background page
+  (`browser.action`/`browser.browserAction`, `scripting.executeScript`/`tabs.executeScript`, alarms instead of timers, `globalThis` instead of `window`).
+- The stored rules are loaded immediately on start; the update check runs afterwards.
+- The badge text color is also set in Chrome (>= 110).
+
+### Fixed
+- The stored rules were not loaded when the rules server could not be reached (e.g. offline).
+- The first value scheduled by `deferSaveOnDisk()` was not written to the disk.
+- The "site blocked" page only offers links to `http(s)` URLs.
+
+### Compatibility note
+- Require Firefox >= 55
+- Require Chrome >= 121 (Manifest V3 build)
+
 
 ## [1.27.3] - 2025-02-05
 

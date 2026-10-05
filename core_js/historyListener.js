@@ -24,9 +24,17 @@
 */
 
 function historyListenerStart() {
-    if(storage.historyListenerEnabled) {
+    // In a service worker the listener is registered at load time (see below)
+    if(storage.historyListenerEnabled && !isServiceWorker()) {
         browser.webNavigation.onHistoryStateUpdated.addListener(historyCleaner);
     }
+}
+
+/**
+ * Runs in the page: replaces the current history entry with the cleaned URL.
+ */
+function replaceHistoryStateInPage(url) {
+    history.replaceState(null, "", url);
 }
 
 /**
@@ -37,19 +45,34 @@ function historyListenerStart() {
 * which is associated with the new history entry created by replaceState()
 */
 function historyCleaner(details) {
-    if(storage.globalStatus) {
+    if(storage.globalStatus && storage.historyListenerEnabled) {
         const urlBefore = details.url;
         const urlAfter = pureCleaning(details.url);
 
         if(urlBefore !== urlAfter) {
-            browser.tabs.executeScript(details.tabId, {
-                frameId: details.frameId,
-                   code: 'history.replaceState(null,"",'+JSON.stringify(urlAfter)+');'
-            }).then(() => {}, onError);
+            if (browser.scripting && typeof browser.scripting.executeScript === 'function') {
+                // Manifest V3: no code strings, inject a function instead
+                browser.scripting.executeScript({
+                    target: {tabId: details.tabId, frameIds: [details.frameId]},
+                    func: replaceHistoryStateInPage,
+                    args: [urlAfter]
+                }).then(() => {}, onError);
+            } else {
+                browser.tabs.executeScript(details.tabId, {
+                    frameId: details.frameId,
+                    code: 'history.replaceState(null,"",'+JSON.stringify(urlAfter)+');'
+                }).then(() => {}, onError);
+            }
         }
     }
 }
 
 function onError(error) {
     console.log(`[ClearURLs] Error: ${error}`);
+}
+
+if (isServiceWorker()) {
+    browser.webNavigation.onHistoryStateUpdated.addListener(details => {
+        storageReady.then(() => historyCleaner(details)).catch(handleError);
+    });
 }

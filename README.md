@@ -46,6 +46,42 @@ Here you can download the packed files for the Firefox- and Chrome-Dev:
 
  - [ClearURLs.zip](https://gitlab.com/ClearURLs/ClearUrls/-/jobs/artifacts/master/raw/ClearURLs.zip?job=bundle%20addon)
 
+## Chrome (Manifest V3)
+Chrome no longer runs Manifest V2 extensions, so the Chrome version uses Manifest V3.
+It is built from the same source files; only the manifest differs (`manifest.chrome.json`).
+
+Build it with Node.js and load the result as an unpacked extension (`chrome://extensions` → *Developer mode* → *Load unpacked*):
+```
+node build_tools/build-chrome.js        # creates build/chrome
+node build_tools/build-chrome.js --zip  # additionally creates build/ClearURLs-chrome.zip
+```
+
+### How the Chrome version works
+Manifest V3 does not allow extensions to rewrite requests from a blocking `webRequest` listener.
+Instead, the ClearURLs rules are translated into [`declarativeNetRequest`](https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest) rules (see `core_js/dnr.js`),
+which the browser applies before a request leaves the browser:
+
+* parameter rules → `redirect` rules that remove the parameters (`removeParams` for literal names, `regexSubstitution` for regular expressions)
+* `rawRules` → `regexSubstitution` redirects
+* domain blocking (`completeProvider`) → `block` rules, main frames are sent to the "site blocked" page
+* exceptions → `allow` rules
+* hyperlink auditing (ping) blocking → `block` rule for `ping` requests
+* ETag filtering → `modifyHeaders` rule that removes the `ETag` response header
+* skipping of local hosts → `allow` rule with top priority
+
+The JavaScript engine (`clearurls.js`) keeps running in the background service worker in observe-only mode. It provides the
+statistics, the log, the badge counter, the context menu, the cleaning tool, the history listener, the expansion of tracking
+redirects (e.g. `google.com/url?q=...`) for frames, and a fallback that cleans a main frame URL after it has been committed if the declarative
+rules could not handle it (e.g. parameters in the fragment or upper case parameter names).
+
+### Known differences to the Firefox version
+* Exceptions are `allow` rules, which the browser applies to the whole request. An exception of one provider therefore also disables the
+  rules of providers that appear earlier in the rules file (including the global rules) for the matching URLs. In Firefox an exception
+  only disables the rules of its own provider.
+* Tracking redirects (`redirections`) are expanded by navigating the tab to the destination, so the tracking server may still receive the request.
+* Literal parameter names are matched case-sensitively by the declarative rules; other spellings are cleaned by the fallback after the page has started loading.
+* The rules are checked for updates every 6 hours (a service worker is restarted frequently, so it cannot check once per browser start).
+
 ## Test
 If you want to test whether ClearURLs works correctly on your system, you can go to this test page: [https://test.clearurls.xyz/](https://test.clearurls.xyz/)
 
