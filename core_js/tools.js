@@ -209,10 +209,11 @@ function increaseCleanedCounter() {
 function changeIcon() {
     checkOSAndroid().then((res) => {
         if (!res) {
+            // absolute paths: a service worker resolves relative paths against its own directory
             if (storage.globalStatus) {
-                getAction().setIcon({path: "img/clearurls_128x128.png"}).catch(handleError);
+                getAction().setIcon({path: "/img/clearurls_128x128.png"}).catch(handleError);
             } else {
-                getAction().setIcon({path: "img/clearurls_gray_128x128.png"}).catch(handleError);
+                getAction().setIcon({path: "/img/clearurls_gray_128x128.png"}).catch(handleError);
             }
         }
     });

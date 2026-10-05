@@ -28,11 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`browser.action`/`browser.browserAction`, `scripting.executeScript`/`tabs.executeScript`, alarms instead of timers, `globalThis` instead of `window`).
 - The stored rules are loaded immediately on start; the update check runs afterwards.
 - The badge text color is also set in Chrome (>= 110).
+- Chrome: the Google and Yandex link fixes hook `window.rwt` / `window._borschik` from "MAIN" world content scripts
+  (`core_js/google_link_fix_main.js`, `core_js/yandex_link_fix_main.js`), Manifest V3 refuses inline scripts inserted by content scripts.
 
 ### Fixed
 - The stored rules were not loaded when the rules server could not be reached (e.g. offline).
 - The first value scheduled by `deferSaveOnDisk()` was not written to the disk.
 - The "site blocked" page only offers links to `http(s)` URLs.
+- Chrome: the toolbar icon could not be changed from the service worker (relative image path).
 
 ### Compatibility note
 - Require Firefox >= 55
