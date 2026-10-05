@@ -24,6 +24,17 @@ var storage = [];
 var hasPendingSaves = false;
 var pendingSaves = new Set();
 
+// Functions that are called with the key of every changed storage value
+const storageChangeListeners = [];
+
+// Resolves once the storage has been loaded from disk and ClearURLs has started.
+// Event listeners that are registered before genesis() finished (required by
+// service workers) wait for this promise.
+let storageReadyResolve;
+const storageReady = new Promise(resolve => {
+    storageReadyResolve = resolve;
+});
+
 /**
  * Writes the storage variable to the disk.
  */
@@ -86,12 +97,14 @@ function saveOnDisk(keys) {
 }
 
 /**
- * Schedule to save a key to disk in 30 seconds.
+ * Schedule to save a key to disk in 30 seconds
+ * (5 seconds in a service worker, which can be terminated after 30 seconds of inactivity).
  * @param  {String} key
  */
 function deferSaveOnDisk(key) {
+    pendingSaves.add(key);
+
     if (hasPendingSaves) {
-        pendingSaves.add(key);
         return;
     }
 
@@ -99,7 +112,7 @@ function deferSaveOnDisk(key) {
         saveOnDisk(Array.from(pendingSaves));
         pendingSaves.clear();
         hasPendingSaves = false;
-    }, 30000);
+    }, isServiceWorker() ? 5000 : 30000);
     hasPendingSaves = true;
 }
 
@@ -121,6 +134,8 @@ function genesis() {
 
         // Start history listener
         historyListenerStart();
+
+        storageReadyResolve();
     }, handleError);
 }
 
@@ -183,6 +198,14 @@ function setData(key, value) {
         default:
             storage[key] = value;
     }
+
+    storageChangeListeners.forEach(listener => {
+        try {
+            listener(key);
+        } catch (e) {
+            handleError(e);
+        }
+    });
 }
 
 /**
@@ -225,6 +248,8 @@ function initSettings() {
     storage.pingBlocking = true;
     storage.eTagFiltering = false;
     storage.watchDogErrorCount = 0;
+    storage.lastRuleCheck = 0;
+    storage.dnrFingerprint = "";
 
     if (getBrowser() === "Firefox") {
         storage.types = ["font", "image", "imageset", "main_frame", "media", "object", "object_subrequest", "other", "script", "stylesheet", "sub_frame", "websocket", "xml_dtd", "xmlhttprequest", "xslt"];

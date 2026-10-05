@@ -66,10 +66,13 @@ function generateDummyEtag(len, quotes = true, w = false) {
 }
 
 /**
- * Since Firefox 85, eTags can no longer be 
+ * Since Firefox 85, eTags can no longer be
  * used for tracking users over multiple sites.
+ *
+ * Manifest V3 (Chrome) does not allow blocking listeners; there the ETag header
+ * is removed by a declarativeNetRequest rule (see core_js/dnr.js).
  */
-if(getBrowser() !== "Firefox") {
+if(getBrowser() !== "Firefox" && !usesDNR()) {
     browser.webRequest.onHeadersReceived.addListener(
         eTagFilter,
         {urls: ["<all_urls>"]},

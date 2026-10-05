@@ -22,36 +22,95 @@
 * and based on: https://github.com/mdn/webextensions-examples/tree/master/context-menu-copy-link-with-types
 */
 
+const CONTEXT_MENU_ID = "copy-link-to-clipboard";
+
 function contextMenuStart() {
-    if(storage.contextMenuEnabled) {
+    const create = () => {
         browser.contextMenus.create({
-            id: "copy-link-to-clipboard",
+            id: CONTEXT_MENU_ID,
             title: translate("clipboard_copy_link"),
             contexts: ["link"]
+        }, () => {
+            // Ignore "duplicate id" errors (menu entries survive service worker restarts)
+            void browser.runtime.lastError;
         });
+    };
 
-        browser.contextMenus.onClicked.addListener((info, tab) => {
-            if (info.menuItemId === "copy-link-to-clipboard") {
-                const url = pureCleaning(info.linkUrl);
-                const code = "copyToClipboard(" +
-                JSON.stringify(url)+");";
-
-                browser.tabs.executeScript({
-                    code: "typeof copyToClipboard === 'function';",
-                }).then((results) => {
-                    if (!results || results[0] !== true) {
-                        return browser.tabs.executeScript(tab.id, {
-                            file: "/external_js/clipboard-helper.js",
-                        }).catch(handleError);
-                    }
-                }).then(() => {
-                    return browser.tabs.executeScript(tab.id, {
-                        code,
-                    });
-                }).catch((error) => {
-                    console.error("Failed to copy text: " + error);
-                });
-            }
-        });
+    if (isServiceWorker()) {
+        // The menu entry persists across service worker restarts, so start from a clean state
+        browser.contextMenus.removeAll().then(() => {
+            if (storage.contextMenuEnabled) create();
+        }, handleError);
+    } else if (storage.contextMenuEnabled) {
+        create();
     }
 }
+
+/**
+ * Runs in the page: copies the given text to the clipboard.
+ */
+function copyToClipboardInPage(text) {
+    function oncopy(event) {
+        document.removeEventListener("copy", oncopy, true);
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        event.clipboardData.setData("text/plain", text);
+    }
+
+    const legacyCopy = () => {
+        document.addEventListener("copy", oncopy, true);
+        document.execCommand("copy");
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(legacyCopy);
+    } else {
+        legacyCopy();
+    }
+}
+
+/**
+ * Copies the given (cleaned) URL to the clipboard of the given tab.
+ */
+function copyCleanLink(tab, url) {
+    if (browser.scripting && typeof browser.scripting.executeScript === 'function') {
+        // Manifest V3: no code strings, inject a function instead
+        return browser.scripting.executeScript({
+            target: {tabId: tab.id},
+            func: copyToClipboardInPage,
+            args: [url]
+        }).catch((error) => {
+            console.error("Failed to copy text: " + error);
+        });
+    }
+
+    const code = "copyToClipboard(" + JSON.stringify(url) + ");";
+
+    return browser.tabs.executeScript({
+        code: "typeof copyToClipboard === 'function';",
+    }).then((results) => {
+        if (!results || results[0] !== true) {
+            return browser.tabs.executeScript(tab.id, {
+                file: "/external_js/clipboard-helper.js",
+            }).catch(handleError);
+        }
+    }).then(() => {
+        return browser.tabs.executeScript(tab.id, {
+            code,
+        });
+    }).catch((error) => {
+        console.error("Failed to copy text: " + error);
+    });
+}
+
+/*
+* Registered at load time, so a terminated service worker is woken up by the click.
+*/
+browser.contextMenus.onClicked.addListener((info, tab) => {
+    if (info.menuItemId !== CONTEXT_MENU_ID) return;
+
+    storageReady.then(() => {
+        const url = pureCleaning(info.linkUrl);
+        copyCleanLink(tab, url);
+    }).catch(handleError);
+});

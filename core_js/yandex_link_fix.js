@@ -35,6 +35,9 @@
             "    configurable: false" +
             "});";
 
+        if (s === undefined) return;
+        // Reuse the page's CSP nonce, otherwise a strict CSP refuses the inline script
+        if (s.nonce) ele.nonce = s.nonce;
         s.parentNode.insertBefore(ele, s);
     }
 

@@ -23,6 +23,24 @@
 
 let badges = {};
 
+/*
+* A service worker loses its memory when it is terminated, so the per-tab
+* counters are mirrored in the session storage (cleared when the browser closes).
+*/
+const badgesPersisted = isServiceWorker() && typeof browser !== 'undefined' && browser.storage && browser.storage.session;
+
+if (badgesPersisted) {
+    browser.storage.session.get('badges').then(items => {
+        badges = Object.assign(items.badges || {}, badges);
+    }).catch(handleError);
+}
+
+function persistBadges() {
+    if (badgesPersisted) {
+        browser.storage.session.set({badges: badges}).catch(handleError);
+    }
+}
+
 /**
  * Increases the badged by one.
  */
@@ -45,12 +63,14 @@ function increaseBadged(quiet = false, request) {
         badges[tabId].counter += 1;
     }
 
+    persistBadges();
+
     checkOSAndroid().then((res) => {
         if (!res) {
             if (storage.badgedStatus && !quiet) {
-                browser.browserAction.setBadgeText({text: (badges[tabId]).counter.toString(), tabId: tabId}).catch(handleError);
+                getAction().setBadgeText({text: (badges[tabId]).counter.toString(), tabId: tabId}).catch(handleError);
             } else {
-                browser.browserAction.setBadgeText({text: "", tabId: tabId}).catch(handleError);
+                getAction().setBadgeText({text: "", tabId: tabId}).catch(handleError);
             }
         }
     });
@@ -68,6 +88,17 @@ function handleUpdated(tabId, changeInfo, tabInfo) {
             counter: 0,
             lastURL: tabInfo.url
         };
+        persistBadges();
+    }
+}
+
+/**
+ * Forget the counter of closed tabs.
+ */
+function handleRemoved(tabId) {
+    if (badges[tabId]) {
+        delete badges[tabId];
+        persistBadges();
     }
 }
 
@@ -75,3 +106,4 @@ function handleUpdated(tabId, changeInfo, tabInfo) {
  * Call by each tab is updated.
  */
 browser.tabs.onUpdated.addListener(handleUpdated);
+browser.tabs.onRemoved.addListener(handleRemoved);

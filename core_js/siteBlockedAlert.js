@@ -36,8 +36,24 @@ function setText()
 (function() {
     setText();
 
-    const source = new URLSearchParams(window.location.search).get("source");
-    document.getElementById('page').href = decodeURIComponent(source);
+    // The blocked URL is appended by clearurls.js (URL encoded) or by a
+    // declarativeNetRequest rule (raw, may itself contain `&` and `?`),
+    // so take everything after `source=` instead of parsing the query string.
+    const search = window.location.search;
+    const index = search.indexOf("source=");
+    let source = index === -1 ? "" : search.substring(index + "source=".length);
+
+    try {
+        source = decodeURIComponent(source);
+    } catch (e) {
+        // keep the raw value
+    }
+
+    if (/^https?:\/\//i.test(source)) {
+        document.getElementById('page').href = source;
+    } else {
+        document.getElementById('page').remove();
+    }
 })();
 
 /**
