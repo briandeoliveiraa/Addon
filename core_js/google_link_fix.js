@@ -25,6 +25,13 @@
     "use strict";
 
     function injectFunction() {
+        // Manifest V3 applies the extension's CSP to scripts inserted by content scripts,
+        // there the hook runs as a "MAIN" world content script (core_js/google_link_fix_main.js)
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest &&
+            chrome.runtime.getManifest().manifest_version >= 3) {
+            return;
+        }
+
         let ele = document.createElement('script');
         ele.type = 'text/javascript';
         ele.textContent = `
