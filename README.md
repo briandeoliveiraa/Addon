@@ -1,14 +1,33 @@
 <a href="https://www.paypal.me/KevinRoebert" target="_blank"><img src="https://raw.githubusercontent.com/KevinRoebert/DonateButtons/master/Paypal.png" alt="Buy Me A Coffee" height="55"></a>
 <a href="https://www.buymeacoffee.com/KevinRoebert" target="_blank"><img src="https://raw.githubusercontent.com/KevinRoebert/DonateButtons/master/BuyMeACoffee.png" alt="Buy Me A Coffee" height="55"></a>
 
-[<img src="https://blog.mozilla.org/addons/files/2020/04/get-the-addon-fx-apr-2020.svg" alt="for Firefox" height="60px">](https://addons.mozilla.org/firefox/addon/clearurls/) [<img src="https://docs.clearurls.xyz/1.22.0/assets/img/MEA-button.png" alt="for Edge" height="60px">](https://microsoftedge.microsoft.com/addons/detail/mdkdmaickkfdekbjdoojfalpbkgaddei)
+# <sub><img src="https://gitlab.com/ClearURLs/ClearUrls/raw/master/img/clearurls.svg" width="64px" height="64px"></sub> ClearURLs for Chrome
 
-# <sub><img src="https://gitlab.com/ClearURLs/ClearUrls/raw/master/img/clearurls.svg" width="64px" height="64px"></sub> ClearURLs
+**ClearURLs for Chrome** is the [Manifest V3](https://developer.chrome.com/docs/extensions/develop/migrate) version of the [ClearURLs](https://github.com/ClearURLs/Addon) add-on.
+It runs on Chrome and other Chromium-based browsers (Brave, Vivaldi, Opera, ...) that no longer accept Manifest V2 extensions.
+The original add-on for *Firefox* and *Edge* is developed by [Kevin Röbert](https://gitlab.com/ClearURLs/ClearUrls); this repository is a fork of it.
 
-**ClearURLs** is an add-on based on the new WebExtensions technology and is optimized for *Firefox* and some *Chrome* based browsers.
+This extension will automatically remove tracking elements from URLs to help protect your privacy when browsing the Internet.
+It uses the ClearURLs rules, which are regularly updated and can be found [here](https://gitlab.com/anti-tracking/ClearURLs/rules/-/raw/master/data.min.json).
 
-This extension will automatically remove tracking elements from URLs to help protect your privacy when browsing the Internet, 
-which is regularly updated by us and can be found [here](https://gitlab.com/anti-tracking/ClearURLs/rules/-/raw/master/data.min.json).
+## Install
+The Chrome version is not in the Chrome Web Store yet. Install it as an unpacked extension:
+
+1. Download `ClearURLs-chrome.zip` from the [latest release](https://github.com/briandeoliveiraa/Addon/releases/latest) and unzip it.
+2. Open `chrome://extensions` and enable *Developer mode* (top right).
+3. Click *Load unpacked* and select the unzipped folder.
+
+### Build from source
+The build needs Node.js. It assembles the extension into `build/chrome`, which you can load as an unpacked extension as described above:
+```
+node build_tools/build-chrome.js        # creates build/chrome
+node build_tools/build-chrome.js --zip  # additionally creates build/ClearURLs-chrome.zip
+```
+
+The Chrome version is built from the same source files as the Firefox version; only the manifest differs (`manifest.chrome.json` instead of `manifest.json`).
+
+### Firefox and Edge
+Use the original add-on from the store: [<img src="https://blog.mozilla.org/addons/files/2020/04/get-the-addon-fx-apr-2020.svg" alt="for Firefox" height="40px">](https://addons.mozilla.org/firefox/addon/clearurls/) [<img src="https://docs.clearurls.xyz/1.22.0/assets/img/MEA-button.png" alt="for Edge" height="40px">](https://microsoftedge.microsoft.com/addons/detail/mdkdmaickkfdekbjdoojfalpbkgaddei)
 
 ## Application
 Many websites use tracking elements in the URL (e.g. `https://example.com?utm_source=newsletter1&utm_medium=email&utm_campaign=sale`) to mark your online activity. 
@@ -35,28 +54,10 @@ Indeed most of the above URL is tracking code. Once ClearURLs has cleaned the ad
 * Prevents Google from rewriting the search results (to include tracking elements)
 * Prevents Yandex from rewriting the search results (to include tracking elements)
 
-## Permissons
-Reasoning for needed permissions can be found under [here](https://gitlab.com/ClearURLs/ClearUrls/issues/159).
-
 ## Screenshot
 ![Interface (version 1.14.0)](https://docs.clearurls.xyz/1.22.0/assets/img/interface.png)
 
-## CI/CD Artifacts Download (for Firefox- and Chrome-Dev only)
-Here you can download the packed files for the Firefox- and Chrome-Dev:
-
- - [ClearURLs.zip](https://gitlab.com/ClearURLs/ClearUrls/-/jobs/artifacts/master/raw/ClearURLs.zip?job=bundle%20addon)
-
-## Chrome (Manifest V3)
-Chrome no longer runs Manifest V2 extensions, so the Chrome version uses Manifest V3.
-It is built from the same source files; only the manifest differs (`manifest.chrome.json`).
-
-Build it with Node.js and load the result as an unpacked extension (`chrome://extensions` → *Developer mode* → *Load unpacked*):
-```
-node build_tools/build-chrome.js        # creates build/chrome
-node build_tools/build-chrome.js --zip  # additionally creates build/ClearURLs-chrome.zip
-```
-
-### How the Chrome version works
+## How the Chrome version works
 Manifest V3 does not allow extensions to rewrite requests from a blocking `webRequest` listener.
 Instead, the ClearURLs rules are translated into [`declarativeNetRequest`](https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest) rules (see `core_js/dnr.js`),
 which the browser applies before a request leaves the browser:
@@ -86,12 +87,15 @@ rules could not handle it (e.g. parameters in the fragment or upper case paramet
 If you want to test whether ClearURLs works correctly on your system, you can go to this test page: [https://test.clearurls.xyz/](https://test.clearurls.xyz/)
 
 ## Contribute
-If you have any suggestions or complaints, please [create an issue.](https://gitlab.com/ClearURLs/ClearUrls/issues/new)
+If something only goes wrong in the Chrome version, please [create an issue in this repo](https://github.com/briandeoliveiraa/Addon/issues/new).
+For suggestions or complaints about ClearURLs in general, please [create an issue in the upstream repo.](https://gitlab.com/ClearURLs/ClearUrls/issues/new)
 
 **Note: If you have any suggestions or complaints regarding the rules, please [create an issue in this repo](https://gitlab.com/anti-tracking/ClearURLs/rules/-/issues/new) or email us rules.support (at) clearurls.xyz (this mail will automatically create a new issue in this repo).**
 
 ### Translate ClearURLs
 You want to help translating ClearURLs into many languages? – Nice
+
+Translations are maintained in the upstream repo and are shared by the Firefox and Chrome versions.
 
 You can choose between two options to contribute. You can create a merge request, or you can use the POEditor to translate ClearURLs.
 
